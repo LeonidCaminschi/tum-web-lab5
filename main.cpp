@@ -56,12 +56,22 @@ std::string makeHttpRequest(std::string& url) {
         // Send HTTP request
         std::string httpRequest = "GET " + path + " HTTP/1.1\r\n";
         httpRequest += "Host: " + host + "\r\n";
-        httpRequest += "Connection: keep-alive\r\n";
-        httpRequest += "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36\r\n";
+        httpRequest += "Connection: close\r\n";
         httpRequest += "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9\r\n";
+        httpRequest += "Accept-Encoding: gzip, deflate, br, zstd\r\n";
         httpRequest += "Accept-Language: en-US,en;q=0.9\r\n";
+        httpRequest += "Sec-Ch-Ua: \"Brave\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"\r\n";
+        httpRequest += "Sec-Ch-Ua-Mobile: ?0\r\n";
+        httpRequest += "Sec-Ch-Ua-Platform: \"Windows\"\r\n";
+        httpRequest += "Sec-Fetch-Dest: document\r\n";
+        httpRequest += "Sec-Fetch-Mode: navigate\r\n";
+        httpRequest += "Sec-Fetch-Site: none\r\n";
+        httpRequest += "Sec-Fetch-User: ?1\r\n";
+        httpRequest += "Sec-Gpc: 1\r\n";
+        httpRequest += "Upgrade-Insecure-Requests: 1\r\n";
+        httpRequest += "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36\r\n";
         httpRequest += "\r\n";
-        send(sock, httpRequest.c_str(), httpRequest.length(), 0);
+        send(sock, httpRequest.c_str(), httpRequest.length(), 118);
 
         // Receive and print HTTP response
         std::vector<char> response(4096);
@@ -71,6 +81,11 @@ std::string makeHttpRequest(std::string& url) {
             close(sock);
             return "";
         }
+
+        // std::cout << std::string(response.begin(), response.begin() + bytesReceived) << std::endl;
+        std::cout << httpRequest << std::endl;
+        std::cout << response.data() << std::endl;
+        exit(0);
 
         // Check for redirect
         std::string responseStr(response.begin(), response.begin() + bytesReceived);
