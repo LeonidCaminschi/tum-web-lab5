@@ -124,6 +124,8 @@ std::string makeHttpRequest(std::string &url)
         char buffer[8192];
         int bytes;
 
+
+        // TODO: make implementation faster
         while ((bytes = SSL_read(ssl, buffer, sizeof(buffer) - 1)) > 0) // Subtract 1 to leave space for null terminator
         {
             buffer[bytes] = 0; // Null-terminate the buffer
@@ -176,32 +178,7 @@ std::string makeHttpRequest(std::string &url)
 
 void parseSearch(const std::string &response)
 {
-    // Find the title
-    std::regex titleRegex("<title>(.*?)</title>");
-    std::smatch titleMatch;
-    if (std::regex_search(response, titleMatch, titleRegex))
-    {
-        std::string title = titleMatch[1];
-        std::cout << "Title: " << title << std::endl;
-    }
-
-    // Find the description
-    std::regex descriptionRegex("<meta name=\"description\" content=\"(.*?)\">");
-    std::smatch descriptionMatch;
-    if (std::regex_search(response, descriptionMatch, descriptionRegex))
-    {
-        std::string description = descriptionMatch[1];
-        std::cout << "Description: " << description << std::endl;
-    }
-
-    // Find the link
-    std::regex linkRegex("<a href=\"(.*?)\"");
-    std::smatch linkMatch;
-    if (std::regex_search(response, linkMatch, linkRegex))
-    {
-        std::string link = linkMatch[1];
-        std::cout << "Link: " << link << std::endl;
-    }
+    std::cout << response << std::endl;
 }
 
 void parseLink(std::string response)
@@ -215,11 +192,17 @@ void parseLink(std::string response)
 
     // Remove HTML tags and CSS
     boost::regex htmlTagRegex("<[^>]*>");
-    boost::regex cssRegex("<style.*?>.*?</style>", boost::regex::icase | boost::regex::extended);
+    boost::regex cssRegex("<style.*>.*</style>", boost::regex::icase | boost::regex::extended);
+    boost::regex jsRegex("<script.*>.*</script>", boost::regex::icase | boost::regex::extended);
 
     response = boost::regex_replace(response, cssRegex, "");
+    response = boost::regex_replace(response, jsRegex, "");
     response = boost::regex_replace(response, htmlTagRegex, "");
 
+    boost::regex spaceRegex("\\s+");
+    response = boost::regex_replace(response, spaceRegex, " ");
+
+    std::cout << response << std::endl;
     // Now response contains the text content of the HTTP response, with HTML tags and CSS removed
 }
 
