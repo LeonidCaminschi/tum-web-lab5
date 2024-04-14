@@ -9,8 +9,7 @@
 #include <netdb.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-
-#include "decoder.h"
+#include <boost/regex.hpp>
 
 std::string makeHttpRequest(std::string &url)
 {
@@ -106,7 +105,7 @@ std::string makeHttpRequest(std::string &url)
         httpRequest += "Host: " + host + "\r\n";
         httpRequest += "Connection: keep-alive\r\n";
         httpRequest += "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9\r\n";
-        httpRequest += "Accept-Encoding: gzip\r\n";
+        // httpRequest += "Accept-Encoding: gzip\r\n";
         httpRequest += "Accept-Language: en-US,en;q=0.9\r\n";
         httpRequest += "Sec-Ch-Ua: \"Brave\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"\r\n";
         httpRequest += "Sec-Ch-Ua-Mobile: ?0\r\n";
@@ -143,19 +142,10 @@ std::string makeHttpRequest(std::string &url)
         SSL_free(ssl);
         SSL_CTX_free(ctx);
 
-        // Check for "Content-Encoding: gzip" header in the response
-        std::regex encodingRegex("Content-Encoding: (gzip)\r\n", std::regex_constants::icase);
-        std::smatch encodingMatch;
-        if (std::regex_search(responseHeaders, encodingMatch, encodingRegex))
-        {
-            // Decompress the response body
-            responseHeaders = decompressGzip(responseHeaders);
-        }
-
         // Check for redirect
         // Check for redirect
         std::string responseStr(responseHeaders.begin(), responseHeaders.end());
-        std::cout << responseStr << std::endl;
+        // std::cout << responseStr << std::endl;
         if (responseStr.find("301 Moved Permanently") != std::string::npos ||
             responseStr.find("302 Found") != std::string::npos)
         {
@@ -184,7 +174,7 @@ std::string makeHttpRequest(std::string &url)
     return "";
 }
 
-void parseResponse(const std::string &response)
+void parseSearch(const std::string &response)
 {
     // Find the title
     std::regex titleRegex("<title>(.*?)</title>");
@@ -214,18 +204,37 @@ void parseResponse(const std::string &response)
     }
 }
 
+void parseLink(std::string response)
+{
+    // Remove response headers
+    size_t endOfHeaders = response.find("\r\n\r\n");
+    if (endOfHeaders != std::string::npos)
+    {
+        response = response.substr(endOfHeaders + 4); // Skip over "\r\n\r\n"
+    }
+
+    // Remove HTML tags and CSS
+    boost::regex htmlTagRegex("<[^>]*>");
+    boost::regex cssRegex("<style.*?>.*?</style>", boost::regex::icase | boost::regex::extended);
+
+    response = boost::regex_replace(response, cssRegex, "");
+    response = boost::regex_replace(response, htmlTagRegex, "");
+
+    // Now response contains the text content of the HTTP response, with HTML tags and CSS removed
+}
+
 // Function to search using a search engine and print the top results
 void search(const std::string &searchTerm)
 {
     std::string searchUrl = "http://www.google.com/search?q=" + searchTerm;
     std::string response = makeHttpRequest(searchUrl);
-    parseResponse(response);
+    parseSearch(response);
 }
 
 void link(std::string &url)
 {
     std::string response = makeHttpRequest(url);
-    parseResponse(response);
+    parseLink(response);
 }
 
 int main(int argc, char *argv[])
