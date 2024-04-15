@@ -10,6 +10,40 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <boost/regex.hpp>
+#include <fstream>
+#include <unordered_map>
+
+std::unordered_map<std::string, std::string> cache;
+std::string cacheFile = "cache.txt";
+
+void loadCache() {
+    std::ifstream file(cacheFile);
+    std::string line;
+    std::string key, value;
+
+    while (std::getline(file, line)) {
+        if (line.find('|') != std::string::npos) {
+            if (!key.empty() && !value.empty()) {
+                cache[key] = value;
+            }
+            size_t delimiterPos = line.find('|');
+            key = line.substr(0, delimiterPos);
+            value = line.substr(delimiterPos + 1);
+        } else {
+            value += '\n' + line;
+        }
+    }
+    if (!key.empty() && !value.empty()) {
+        cache[key] = value;
+    }
+}
+
+void saveCache() {
+    std::ofstream file(cacheFile);
+    for (const auto &pair : cache) {
+        file << pair.first << '|' << pair.second << '\n';
+    }
+}
 
 std::string makeHttpRequest(std::string &url)
 {
@@ -132,10 +166,10 @@ std::string makeHttpRequest(std::string &url)
             responseHeaders += buffer;
 
             // Stop reading once we've read the headers
-            // if (responseHeaders.find("\r\n\r\n") != std::string::npos)
-            // {
-            //     break;
-            // }
+            if (responseHeaders.find("\r\n\r\n") != std::string::npos)
+            {
+                break;
+            }
         }
 
         //std::cout << responseHeaders << std::endl;
@@ -209,15 +243,33 @@ void parseLink(std::string response)
 // Function to search using a search engine and print the top results
 void search(const std::string &searchTerm)
 {
-    std::string searchUrl = "http://www.google.com/search?q=" + searchTerm;
-    std::string response = makeHttpRequest(searchUrl);
-    parseSearch(response);
+    if (cache.count(searchTerm)) {
+        std::cout << cache[searchTerm] << std::endl;
+        return;
+    } 
+    else
+    {
+        std::string searchUrl = "http://www.google.com/search?q=" + searchTerm;
+        std::string response = makeHttpRequest(searchUrl);
+        parseSearch(response);
+        cache[searchTerm] = response;
+        saveCache();
+    }
 }
 
 void link(std::string &url)
 {
-    std::string response = makeHttpRequest(url);
-    parseLink(response);
+    if (cache.count(url)) {
+        std::cout << cache[url] << std::endl;
+        return;
+    }
+    else
+    {
+        std::string response = makeHttpRequest(url);
+        parseLink(response);
+        cache[url] = response;
+        saveCache();
+    }
 }
 
 int main(int argc, char *argv[])
@@ -235,12 +287,15 @@ int main(int argc, char *argv[])
     }
     else if (option == "-u" && argc == 3)
     {
+        loadCache();
         std::string url = argv[2];
         link(url);
     }
     else if (option == "-s" && argc == 3)
     {
+        loadCache();
         std::string searchTerm = argv[2];
+        std::replace(searchTerm.begin(), searchTerm.end(), ' ', '_');
         search(searchTerm);
     }
     else
